@@ -31,7 +31,6 @@ import com.example.easyshop.pages.HomePage
 import com.example.easyshop.pages.ProfilePage
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Label
 
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier,navController: NavController) {

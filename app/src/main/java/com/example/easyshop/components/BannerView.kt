@@ -43,7 +43,6 @@ fun BannerView(modifier: Modifier = Modifier) {
         val pagerState = rememberPagerState(initialPage = 0) {
             bannerList.size
         }
-
         HorizontalPager(
             state = pagerState,
             pageSpacing = 24.dp
@@ -56,9 +55,7 @@ fun BannerView(modifier: Modifier = Modifier) {
                     .clip(RoundedCornerShape(16.dp))
             )
         }
-
         Spacer(modifier = Modifier.height(10.dp))
-
         DotsIndicator(
             dotCount = bannerList.size,
             type = ShiftIndicatorType(

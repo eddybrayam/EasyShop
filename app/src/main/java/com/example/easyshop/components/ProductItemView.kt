@@ -1,5 +1,6 @@
 package com.example.easyshop.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.content.MediaType.Companion.Text
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,13 +28,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.easyshop.GlobalNavigation
 import com.example.easyshop.model.ProductModel
 
 @Composable
 fun ProductItemView(modifier: Modifier = Modifier, product : ProductModel) {
     Card(
         modifier = modifier
-            .padding(8.dp),
+            .padding(8.dp)
+            .clickable{
+                GlobalNavigation.navController.navigate("product-details/"+product.id)
+            },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(8.dp)
