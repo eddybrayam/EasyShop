@@ -4,6 +4,7 @@ import android.content.Context
 import android.widget.Toast
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.firestore
 
 
@@ -32,6 +33,36 @@ object AppUtil {
                             showToast(context, message = "Item added to the cart")
                         }else{
                             showToast(context, message = "Failed adding item to the cart")
+                        }
+                    }
+            }
+        }
+    }
+    fun removeFromCart(context: Context, productId : String,removeAll : Boolean = false){
+
+        val userDoc = Firebase.firestore.collection("users")
+            .document(FirebaseAuth.getInstance().currentUser?.uid!!)
+
+        userDoc.get().addOnCompleteListener {
+            if(it.isSuccessful){
+                val currentCart = it.result.get("cartItems") as? Map<String, Long> ?: emptyMap()
+                val currentQuantity = currentCart[productId]?:0
+                val updatedQuantity = currentQuantity - 1;
+
+                val updatedCart =
+                    if (updatedQuantity<=0 ||removeAll)
+                        mapOf("cartItems.$productId" to FieldValue.delete())
+                    else
+                        mapOf("cartItems.$productId" to updatedQuantity)
+
+                    mapOf("cartItems.$productId" to updatedQuantity)
+
+                userDoc.update(updatedCart)
+                    .addOnCompleteListener {
+                        if(it.isSuccessful){
+                            showToast(context, message = "Item remove to the cart")
+                        }else{
+                            showToast(context, message = "Failed removing item to the cart")
                         }
                     }
             }
