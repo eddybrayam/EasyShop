@@ -69,4 +69,13 @@ object AppUtil {
         }
     }
 
+    fun getDiscountPercentage() : Float {
+        return 10.0f
+    }
+
+    fun getTaxPercentage() : Float {
+        return 13.0f
+    }
+
+
 }

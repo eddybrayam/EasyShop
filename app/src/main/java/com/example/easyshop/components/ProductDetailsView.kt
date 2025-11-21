@@ -138,7 +138,6 @@ fun ProductDetailsView(modifier: Modifier = Modifier, productId : String) {
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(onClick = {
-            println("PRODUCT ID = $productId")
             AppUtil.addToCart(context,productId)
         },
             modifier = Modifier
