@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose.android)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.androidx.compose.foundation)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -64,5 +65,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.2.0")
     implementation("com.tbuonomo:dotsindicator:5.1.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
+
+    implementation("com.airbnb.android:lottie-compose:6.3.0")
+    implementation("androidx.compose.material:material-icons-extended-android:1.6.8")
 
 }

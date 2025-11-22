@@ -15,7 +15,7 @@ import com.example.easyshop.screen.LoginScreen
 import com.example.easyshop.screen.SignupScreen
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
-
+import com.example.easyshop.pages.MyOrdersPage
 @Composable
 fun AppNavigation(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
@@ -56,6 +56,9 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         }
         composable("checkout") {
             CheckoutPage(modifier)
+        }
+        composable("my_orders") {
+            MyOrdersPage(navController)
         }
 
     }
