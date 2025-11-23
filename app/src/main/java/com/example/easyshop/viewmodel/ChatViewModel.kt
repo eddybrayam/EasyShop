@@ -1,8 +1,11 @@
-package com.example.easyshop
+package com.example.easyshop.viewmodel
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.easyshop.Message
+import com.example.easyshop.OpenAIRequest
+import com.example.easyshop.RetrofitClient
 import com.example.easyshop.model.ProductModel
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
