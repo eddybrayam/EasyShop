@@ -64,9 +64,13 @@ dependencies {
 
     implementation("io.coil-kt:coil-compose:2.2.0")
     implementation("com.tbuonomo:dotsindicator:5.1.0")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
 
     implementation("com.airbnb.android:lottie-compose:6.3.0")
     implementation("androidx.compose.material:material-icons-extended-android:1.6.8")
 
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    // Para conectarnos a Internet (Retrofit)
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    // Para entender el JSON de OpenAI (Gson)
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 }

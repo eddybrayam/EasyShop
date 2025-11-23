@@ -217,6 +217,20 @@ fun HomeScreen(modifier: Modifier = Modifier, navController: NavController) {
                     )
                 )
             },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { navController.navigate("chat_ai") }, // Navega al chat
+                    containerColor = Color(0xFF3344CC), // Azul EasyShop
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    // Icono de Robot o Chat
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome, // Estrellitas de IA
+                        contentDescription = "Chat IA"
+                    )
+                }
+            },
             bottomBar = {
                 NavigationBar(
                     containerColor = Color.Black, // Fondo Negro para combinar con el estilo Porsche

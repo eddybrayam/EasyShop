@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.easyshop.pages.CategoryProductsPage
 import com.example.easyshop.components.ProductDetailsView
+import com.example.easyshop.pages.ChatPage
 import com.example.easyshop.pages.CheckoutPage
 import com.example.easyshop.screen.AuthScreen
 import com.example.easyshop.screen.HomeScreen
@@ -59,6 +60,9 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         }
         composable("my_orders") {
             MyOrdersPage(navController)
+        }
+        composable("chat_ai") {
+            ChatPage(navController)
         }
 
     }
