@@ -76,4 +76,8 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     // Para entender el JSON de OpenAI (Gson)
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Jetpack Glance (Para Widgets estilo Compose)
+    implementation("androidx.glance:glance-appwidget:1.1.0")
+    implementation("androidx.glance:glance-material3:1.1.0")
 }
