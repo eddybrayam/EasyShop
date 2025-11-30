@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -26,54 +27,55 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.easyshop.viewmodel.ChatViewModel
 
+// PALETA PREMIUM
+private object ChatColors {
+    val Black = Color(0xFF000000)
+    val DarkBg = Color(0xFF0A0A0A)
+    val DarkSurface = Color(0xFF111111)
+    val MediumSurface = Color(0xFF1A1A1A)
+    val LightSurface = Color(0xFF2A2A2A)
+    val TextPrimary = Color(0xFFFFFFFF)
+    val TextSecondary = Color(0xFFB5B5B5)
+    val Divider = Color(0xFF262626)
+
+    val CyanAccent = Color(0xFF00E8FF)
+    val CyanLight = Color(0xFF00E8FF).copy(alpha = 0.15f)
+    val CyanMuted = Color(0xFF00E8FF).copy(alpha = 0.3f)
+
+    // Para burbujas de usuario
+    val UserBubbleGradient = listOf(
+        Color(0xFF00E8FF),
+        Color(0xFF0080FF)
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatPage(navController: NavController, viewModel: ChatViewModel = viewModel()) {
     var textInput by remember { mutableStateOf("") }
 
-    // Colores estilo iOS Dark
-    val iosBgGradient = Brush.verticalGradient(
-        colors = listOf(Color(0xFF1A0033), Color.Black) // Morado muy oscuro a negro
-    )
-
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(Color(0xFF3A3A3C), CircleShape) // Gris estilo iOS
-                                .padding(8.dp)
-                        ) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("Asistente EasyShop", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            Text("En línea", color = Color(0xFF32D74B), fontSize = 12.sp) // Verde iOS
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color(0xFF0A84FF)) // Azul iOS
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
+            PremiumChatTopBar(
+                onBackClick = { navController.popBackStack() }
             )
         }
     ) { padding ->
-        // FONDO CON DEGRADADO SUTIL
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(iosBgGradient)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            ChatColors.DarkBg,
+                            ChatColors.Black
+                        )
+                    )
+                )
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // --- LISTA DE MENSAJES ---
+                // LISTA DE MENSAJES
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -82,19 +84,19 @@ fun ChatPage(navController: NavController, viewModel: ChatViewModel = viewModel(
                     contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
                     item {
-                        BotBubbleIOS(text = "¡Hola! 👋 Soy tu vendedor experto. ¿Qué buscas hoy?")
+                        PremiumBotBubble(text = "¡Hola! 👋 Soy tu vendedor experto. ¿Qué buscas hoy?")
                     }
                     items(viewModel.messages) { message ->
                         if (message.isUser) {
-                            UserBubbleIOS(text = message.text)
+                            PremiumUserBubble(text = message.text)
                         } else {
-                            BotBubbleIOS(text = message.text)
+                            PremiumBotBubble(text = message.text)
                         }
                     }
                 }
 
-                // --- BARRA DE ENTRADA ESTILO CRISTAL (iMessage) ---
-                iOSInputBar(
+                // BARRA DE ENTRADA
+                PremiumInputBar(
                     textValue = textInput,
                     onTextChanged = { textInput = it },
                     onSendClick = {
@@ -109,109 +111,304 @@ fun ChatPage(navController: NavController, viewModel: ChatViewModel = viewModel(
     }
 }
 
-// --- COMPONENTE DE BARRA DE ENTRADA TIPO iOS ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun iOSInputBar(
+private fun PremiumChatTopBar(
+    onBackClick: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = CircleShape,
+                            spotColor = ChatColors.CyanAccent.copy(alpha = 0.3f)
+                        ),
+                    shape = CircleShape,
+                    color = ChatColors.MediumSurface
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = ChatColors.CyanAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "Asistente EasyShop",
+                        color = ChatColors.TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(ChatColors.CyanAccent)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "En línea",
+                            color = ChatColors.CyanAccent,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    Icons.Default.ArrowBack,
+                    contentDescription = null,
+                    tint = ChatColors.CyanAccent
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = ChatColors.DarkSurface
+        ),
+        modifier = Modifier.border(
+            width = 1.dp,
+            color = ChatColors.Divider
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PremiumInputBar(
     textValue: String,
     onTextChanged: (String) -> Unit,
     onSendClick: () -> Unit
 ) {
-    // Contenedor principal que simula el cristal translúcido
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1E1E1E).copy(alpha = 0.7f)) // Fondo translúcido
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Botón "+" circular a la izquierda
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF3A3A3C)), // Gris oscuro iOS
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.Gray, modifier = Modifier.size(20.dp))
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Campo de texto redondeado tipo píldora
-        TextField(
-            value = textValue,
-            onValueChange = onTextChanged,
-            placeholder = { Text("iMessage", color = Color.Gray) },
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(30.dp)) // Píldora muy redonda
-                .background(Color.Black.copy(alpha = 0.3f)) // Fondo interior más oscuro y translúcido
-                .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(30.dp)), // Borde sutil
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                cursorColor = Color(0xFF0A84FF), // Cursor azul iOS
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
+            .shadow(
+                elevation = 8.dp,
+                spotColor = ChatColors.CyanAccent.copy(alpha = 0.1f)
             ),
-            maxLines = 4,
-            trailingIcon = {
-                // Icono de Micrófono (o Enviar si hay texto) dentro del campo
-                IconButton(onClick = { if (textValue.isNotBlank()) onSendClick() }) {
+        color = ChatColors.DarkSurface.copy(alpha = 0.95f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Botón "+"
+            Surface(
+                modifier = Modifier
+                    .size(36.dp)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = CircleShape,
+                        spotColor = ChatColors.CyanAccent.copy(alpha = 0.2f)
+                    ),
+                shape = CircleShape,
+                color = ChatColors.MediumSurface
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        // Si hay texto muestra enviar, si no, micrófono (como iMessage)
-                        imageVector = if(textValue.isNotBlank()) Icons.Default.AutoAwesome else Icons.Default.Mic,
-                        contentDescription = "Send/Mic",
-                        tint = if(textValue.isNotBlank()) Color(0xFF0A84FF) else Color.Gray
+                        Icons.Default.Add,
+                        contentDescription = "Add",
+                        tint = ChatColors.TextSecondary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Campo de texto
+            TextField(
+                value = textValue,
+                onValueChange = onTextChanged,
+                placeholder = {
+                    Text(
+                        "Escribe tu mensaje...",
+                        color = ChatColors.TextSecondary
+                    )
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(30.dp))
+                    .border(
+                        width = 1.dp,
+                        color = ChatColors.Divider,
+                        shape = RoundedCornerShape(30.dp)
+                    ),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = ChatColors.MediumSurface,
+                    unfocusedContainerColor = ChatColors.MediumSurface,
+                    focusedTextColor = ChatColors.TextPrimary,
+                    unfocusedTextColor = ChatColors.TextPrimary,
+                    cursorColor = ChatColors.CyanAccent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                maxLines = 4,
+                trailingIcon = {
+                    IconButton(onClick = { if (textValue.isNotBlank()) onSendClick() }) {
+                        Icon(
+                            imageVector = if (textValue.isNotBlank()) Icons.Default.AutoAwesome else Icons.Default.Mic,
+                            contentDescription = "Send/Mic",
+                            tint = if (textValue.isNotBlank()) ChatColors.CyanAccent else ChatColors.TextSecondary
+                        )
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PremiumUserBubble(text: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.End
+    ) {
+        Surface(
+            modifier = Modifier
+                .padding(start = 60.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(
+                        topStart = 20.dp,
+                        topEnd = 20.dp,
+                        bottomStart = 20.dp,
+                        bottomEnd = 4.dp
+                    ),
+                    spotColor = ChatColors.CyanAccent.copy(alpha = 0.3f)
+                ),
+            shape = RoundedCornerShape(
+                topStart = 20.dp,
+                topEnd = 20.dp,
+                bottomStart = 20.dp,
+                bottomEnd = 4.dp
+            ),
+            color = Color.Transparent
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            colors = ChatColors.UserBubbleGradient
+                        )
+                    )
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = text,
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+            }
+        }
+        Text(
+            "Entregado",
+            color = ChatColors.TextSecondary,
+            fontSize = 10.sp,
+            modifier = Modifier.padding(end = 4.dp, top = 2.dp)
         )
     }
 }
 
-// --- BURBUJA USUARIO (Morado/Rosa iOS) ---
 @Composable
-fun UserBubbleIOS(text: String) {
-    val purpleGradient = Brush.horizontalGradient(
-        colors = listOf(Color(0xFF8E2DE2), Color(0xFF4A00E0)) // Degradado morado estilo iMessage
-    )
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = Alignment.End) {
-        Box(
-            modifier = Modifier
-                .padding(start = 60.dp)
-                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp))
-                .background(purpleGradient)
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-        ) {
-            Text(text = text, color = Color.White, fontSize = 16.sp)
-        }
-        // Pequeña "colita" de la burbuja
-        Text("Entregado", color = Color.Gray, fontSize = 10.sp, modifier = Modifier.padding(end = 4.dp, top = 2.dp))
-    }
-}
-
-// --- BURBUJA BOT (Gris translúcido iOS) ---
-@Composable
-fun BotBubbleIOS(text: String) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = Alignment.Start) {
+private fun PremiumBotBubble(text: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
         Row(verticalAlignment = Alignment.Bottom) {
-            // Avatar pequeño
-            Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Color(0xFF3A3A3C)).padding(4.dp)) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White)
+            // Avatar
+            Surface(
+                modifier = Modifier
+                    .size(28.dp)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = CircleShape,
+                        spotColor = ChatColors.CyanAccent.copy(alpha = 0.2f)
+                    ),
+                shape = CircleShape,
+                color = ChatColors.MediumSurface
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = ChatColors.CyanAccent,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
+
             Spacer(modifier = Modifier.width(8.dp))
-            Box(
+
+            Surface(
                 modifier = Modifier
                     .padding(end = 60.dp)
-                    .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 4.dp, bottomEnd = 20.dp))
-                    .background(Color(0xFF2C2C2C).copy(alpha = 0.9f)) // Gris oscuro casi opaco
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .shadow(
+                        elevation = 6.dp,
+                        shape = RoundedCornerShape(
+                            topStart = 20.dp,
+                            topEnd = 20.dp,
+                            bottomStart = 4.dp,
+                            bottomEnd = 20.dp
+                        ),
+                        spotColor = ChatColors.CyanAccent.copy(alpha = 0.1f)
+                    ),
+                shape = RoundedCornerShape(
+                    topStart = 20.dp,
+                    topEnd = 20.dp,
+                    bottomStart = 4.dp,
+                    bottomEnd = 20.dp
+                ),
+                color = ChatColors.MediumSurface
             ) {
-                Text(text = text, color = Color.White, fontSize = 16.sp, lineHeight = 22.sp)
+                Box(
+                    modifier = Modifier
+                        .border(
+                            width = 1.dp,
+                            color = ChatColors.Divider,
+                            shape = RoundedCornerShape(
+                                topStart = 20.dp,
+                                topEnd = 20.dp,
+                                bottomStart = 4.dp,
+                                bottomEnd = 20.dp
+                            )
+                        )
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = text,
+                        color = ChatColors.TextPrimary,
+                        fontSize = 16.sp,
+                        lineHeight = 22.sp
+                    )
+                }
             }
         }
     }

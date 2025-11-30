@@ -3,18 +3,20 @@ package com.example.easyshop.pages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -32,17 +34,29 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.delay
-import kotlin.math.absoluteValue
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.ui.draw.shadow
 import com.example.easyshop.model.OrderModel
 
-// Control del flujo de pantallas
+// PALETA PREMIUM
+private object CheckoutColors {
+    val Black = Color(0xFF000000)
+    val DarkBg = Color(0xFF0A0A0A)
+    val DarkSurface = Color(0xFF111111)
+    val MediumSurface = Color(0xFF1A1A1A)
+    val LightSurface = Color(0xFF2A2A2A)
+    val TextPrimary = Color(0xFFFFFFFF)
+    val TextSecondary = Color(0xFFB5B5B5)
+    val Divider = Color(0xFF262626)
+
+    val CyanAccent = Color(0xFF00E8FF)
+    val CyanLight = Color(0xFF00E8FF).copy(alpha = 0.15f)
+    val CyanMuted = Color(0xFF00E8FF).copy(alpha = 0.3f)
+}
+
 enum class CheckoutStep {
-    SUMMARY,      // 1. Ver carrito y total
-    PAYMENT_DATA, // 2. Meter datos de tarjeta
-    PROCESSING,   // 3. Animación caja
-    SUCCESS       // 4. Listo
+    SUMMARY,
+    PAYMENT_DATA,
+    PROCESSING,
+    SUCCESS
 }
 
 @Composable
@@ -50,7 +64,6 @@ fun CheckoutPage(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var currentStep by remember { mutableStateOf(CheckoutStep.SUMMARY) }
 
-    // --- ESTADOS DE DATOS (FIREBASE) ---
     val userModel = remember { mutableStateOf(UserModel()) }
     val productList = remember { mutableStateListOf<ProductModel>() }
     val subTotal = remember { mutableStateOf(0f) }
@@ -58,13 +71,11 @@ fun CheckoutPage(modifier: Modifier = Modifier) {
     val tax = remember { mutableStateOf(0f) }
     val total = remember { mutableStateOf(0f) }
 
-    // --- ESTADOS DEL FORMULARIO DE TARJETA ---
     var cardNumber by remember { mutableStateOf("") }
     var cardHolder by remember { mutableStateOf("") }
     var cardExpiry by remember { mutableStateOf("") }
     var cardCvv by remember { mutableStateOf("") }
 
-    // --- LÓGICA DE CÁLCULO ---
     fun calculateAndAssign() {
         subTotal.value = 0f
         productList.forEach {
@@ -79,7 +90,6 @@ fun CheckoutPage(modifier: Modifier = Modifier) {
         total.value = if (calc > 0) "%.2f".format(calc).toFloat() else 0f
     }
 
-    // --- CARGA DE DATOS ---
     LaunchedEffect(key1 = Unit) {
         val uid = FirebaseAuth.getInstance().currentUser?.uid
         if (uid != null) {
@@ -108,31 +118,26 @@ fun CheckoutPage(modifier: Modifier = Modifier) {
         }
     }
 
-    // Función para guardar en Firebase y limpiar carrito
     fun saveOrderToFirebase() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        // 1. Crear el objeto Pedido
         val newOrder = OrderModel(
-            orderId = System.currentTimeMillis().toString(), // ID simple basado en tiempo
+            orderId = System.currentTimeMillis().toString(),
             userId = uid,
-            products = productList.toList(), // Hacemos una copia de la lista actual
+            products = productList.toList(),
             totalPrice = total.value,
             address = userModel.value.address,
             status = "En Camino",
             date = System.currentTimeMillis()
         )
 
-        // 2. Guardar en la sub-colección "orders" del usuario
         Firebase.firestore.collection("users").document(uid)
             .collection("orders")
             .add(newOrder)
             .addOnSuccessListener {
-                // 3. Si se guardó bien, LIMPIAMOS EL CARRITO del usuario
                 Firebase.firestore.collection("users").document(uid)
                     .update("cartItems", emptyMap<String, Int>())
                     .addOnSuccessListener {
-                        // Todo listo, pasamos a la pantalla de éxito
                         currentStep = CheckoutStep.SUCCESS
                         AppUtil.showToast(context, "¡Pedido registrado con éxito!")
                     }
@@ -142,318 +147,467 @@ fun CheckoutPage(modifier: Modifier = Modifier) {
             }
     }
 
-    // --- UI PRINCIPAL QUE CAMBIA SEGÚN EL PASO ---
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5)) // Fondo gris claro para contraste
-            .padding(16.dp)
+            .background(CheckoutColors.DarkBg)
     ) {
         when (currentStep) {
-            // PASO 1: RESUMEN DEL CARRITO
-            // PASO 1: RESUMEN DEL CARRITO
             CheckoutStep.SUMMARY -> {
-                Text("Resumen de Orden", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Entregar a:", fontWeight = FontWeight.Bold)
-                        Text(userModel.value.address, color = Color.Gray)
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
-                        // Aquí llamamos a la función corregida pasando el valor FLOAT (.value)
-                        RowItem("Sub Total", subTotal.value)
-                        RowItem("Descuento (-)", discount.value)
-                        RowItem("Impuestos (+)", tax.value)
-
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Total", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            // CORRECCIÓN AQUÍ: Formato limpio del Total
-                            Text(
-                                text = "$ " + "%.2f".format(total.value),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 22.sp,
-                                color = Color(0xFF3344CC)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(55.dp)
-                        // 1. Sombra externa de color
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(50.dp),
-                            spotColor = Color(0xFFFF3366),
-                            ambientColor = Color(0xFFFF3366)
-                        )
-                        .clip(RoundedCornerShape(50.dp))
-                        // 2. Fondo con degradado vertical (Volumen)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFFFF758C), // Rosa claro arriba
-                                    Color(0xFFFF0040)  // Rojo intenso abajo
-                                )
-                            )
-                        )
-                        // 3. Borde de brillo superior
-                        .border(
-                            width = 1.dp,
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.5f),
-                                    Color.Transparent
-                                )
-                            ),
-                            shape = RoundedCornerShape(50.dp)
-                        )
-                        .clickable {
-                            // TU LÓGICA ORIGINAL AQUÍ
-                            currentStep = CheckoutStep.PAYMENT_DATA
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Seleccionar Método de Pago",
-                        fontSize = 16.sp, // Un poco más pequeño porque el texto es largo
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        style = androidx.compose.ui.text.TextStyle(
-                            shadow = androidx.compose.ui.graphics.Shadow(
-                                color = Color.Black.copy(alpha = 0.2f),
-                                blurRadius = 4f
-                            )
-                        )
-                    )
-                }
-            }
-
-            // PASO 2: SELECCIÓN Y FORMULARIO DE TARJETA (AQUÍ ESTÁ LA MAGIA)
-            CheckoutStep.PAYMENT_DATA -> {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text("Pago con Tarjeta", fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // 1. LA TARJETA VISUAL DINÁMICA
-                    // Le pasamos las variables de estado para que se actualice sola
-                    DynamicCreditCard(
-                        number = cardNumber,
-                        holderName = cardHolder,
-                        expiry = cardExpiry
-                    )
-
-                    Spacer(modifier = Modifier.height(30.dp))
-
-                    // 2. EL FORMULARIO
-                    Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-
-                            // Campo Número de Tarjeta
-                            OutlinedTextField(
-                                value = cardNumber,
-                                onValueChange = {
-                                    if (it.length <= 16 && it.all { char -> char.isDigit() }) {
-                                        cardNumber = it
-                                    }
-                                },
-                                label = { Text("Número de Tarjeta") },
-                                modifier = Modifier.fillMaxWidth(),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                visualTransformation = CreditCardVisualTransformation(),
-                                singleLine = true,
-                                // HEMOS CAMBIADO EL ICONO AQUÍ A 'LOCK' PARA QUE NO TE DE ERROR
-                                trailingIcon = { Icon(androidx.compose.material.icons.Icons.Default.Lock, contentDescription = null) }
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Campo Nombre
-                            OutlinedTextField(
-                                value = cardHolder,
-                                onValueChange = { cardHolder = it.uppercase() },
-                                label = { Text("Titular de la tarjeta") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                // Campo Fecha Expiración
-                                OutlinedTextField(
-                                    value = cardExpiry,
-                                    onValueChange = {
-                                        if (it.length <= 4 && it.all { char -> char.isDigit() }) {
-                                            cardExpiry = it
-                                        }
-                                    },
-                                    label = { Text("MM/YY") },
-                                    modifier = Modifier.weight(1f),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    visualTransformation = ExpiryDateVisualTransformation(), // MAGIA: Agrega la barra /
-                                    singleLine = true
-                                )
-
-                                // Campo CVV
-                                OutlinedTextField(
-                                    value = cardCvv,
-                                    onValueChange = { if (it.length <= 3 && it.all { char -> char.isDigit() }) cardCvv = it },
-                                    label = { Text("CVV") },
-                                    modifier = Modifier.weight(1f),
-                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                                    visualTransformation = PasswordVisualTransformation(), // Oculta los puntos
-                                    singleLine = true
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(30.dp))
-
-                    // --- BOTÓN CON EFECTO 3D / RELIEVE ---
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // HEADER
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(55.dp) // Un poco más alto para que luzca el efecto
-                            // 1. LA SOMBRA EXTERNA DE COLOR (Hace que flote)
-                            .shadow(
-                                elevation = 10.dp,
-                                shape = RoundedCornerShape(50.dp),
-                                spotColor = Color(0xFFFF3366), // Sombra rojiza/rosa
-                                ambientColor = Color(0xFFFF3366)
-                            )
-                            .clip(RoundedCornerShape(50.dp))
                             .background(
-                                // 2. EL CUERPO CON VOLUMEN (Degradado Vertical)
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
-                                        Color(0xFFFF758C), // Arriba: Rosa claro (Luz)
-                                        Color(0xFFFF0040)  // Abajo: Rojo intenso (Sombra)
+                                        CheckoutColors.MediumSurface,
+                                        CheckoutColors.DarkBg.copy(alpha = 0.5f)
                                     )
                                 )
                             )
-                            // 3. EL BRILLO SUPERIOR (El toque final de relieve)
-                            .border(
-                                width = 1.dp,
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.5f), // Borde blanco arriba
-                                        Color.Transparent               // Desaparece abajo
-                                    )
-                                ),
-                                shape = RoundedCornerShape(50.dp)
-                            )
-                            .clickable {
-                                // TU LÓGICA DE VALIDACIÓN
-                                if (cardNumber.length == 16 && cardExpiry.length == 4 && cardCvv.length == 3) {
-                                    currentStep = CheckoutStep.PROCESSING
-                                } else {
-                                    AppUtil.showToast(context, "Por favor completa los datos correctamente")
-                                }
-                            },
-                        contentAlignment = Alignment.Center
+                            .border(width = 1.dp, color = CheckoutColors.Divider)
+                            .padding(20.dp)
                     ) {
-                        Text(
-                            text = "Pagar $ " + "%.2f".format(total.value),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            // Sombra suave en el texto para leerse mejor
-                            style = androidx.compose.ui.text.TextStyle(
-                                shadow = androidx.compose.ui.graphics.Shadow(
-                                    color = Color.Black.copy(alpha = 0.2f),
-                                    blurRadius = 4f
-                                )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .width(5.dp)
+                                    .height(28.dp)
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                CheckoutColors.CyanAccent,
+                                                CheckoutColors.CyanAccent.copy(alpha = 0.5f)
+                                            )
+                                        )
+                                    )
                             )
-                        )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Resumen de Orden",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CheckoutColors.TextPrimary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(
+                                    elevation = 8.dp,
+                                    shape = RoundedCornerShape(16.dp),
+                                    spotColor = CheckoutColors.CyanAccent.copy(alpha = 0.1f)
+                                ),
+                            shape = RoundedCornerShape(16.dp),
+                            color = CheckoutColors.MediumSurface
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .border(
+                                        width = 1.dp,
+                                        color = CheckoutColors.Divider,
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    "Entregar a:",
+                                    fontWeight = FontWeight.Bold,
+                                    color = CheckoutColors.TextPrimary
+                                )
+                                Text(
+                                    userModel.value.address,
+                                    color = CheckoutColors.TextSecondary
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp)
+                                        .height(1.dp)
+                                        .background(CheckoutColors.Divider)
+                                )
+
+                                PremiumRowItem("Sub Total", subTotal.value)
+                                PremiumRowItem("Descuento (-)", discount.value)
+                                PremiumRowItem("Impuestos (+)", tax.value)
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp)
+                                        .height(1.dp)
+                                        .background(CheckoutColors.Divider)
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Total",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = CheckoutColors.TextPrimary
+                                    )
+                                    Text(
+                                        text = "$ " + "%.2f".format(total.value),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 22.sp,
+                                        color = CheckoutColors.CyanAccent
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(55.dp)
+                                .shadow(
+                                    elevation = 12.dp,
+                                    shape = RoundedCornerShape(20.dp),
+                                    spotColor = CheckoutColors.CyanAccent.copy(alpha = 0.4f)
+                                ),
+                            shape = RoundedCornerShape(20.dp),
+                            color = CheckoutColors.CyanAccent
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() }
+                                    ) {
+                                        currentStep = CheckoutStep.PAYMENT_DATA
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Seleccionar Método de Pago",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
             }
 
-            // PASO 3: ANIMACIÓN
+            CheckoutStep.PAYMENT_DATA -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // HEADER
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        CheckoutColors.MediumSurface,
+                                        CheckoutColors.DarkBg.copy(alpha = 0.5f)
+                                    )
+                                )
+                            )
+                            .border(width = 1.dp, color = CheckoutColors.Divider)
+                            .padding(20.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .width(5.dp)
+                                    .height(28.dp)
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                CheckoutColors.CyanAccent,
+                                                CheckoutColors.CyanAccent.copy(alpha = 0.5f)
+                                            )
+                                        )
+                                    )
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Pago con Tarjeta",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CheckoutColors.TextPrimary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        // TARJETA VISUAL
+                        PremiumCreditCard(
+                            number = cardNumber,
+                            holderName = cardHolder,
+                            expiry = cardExpiry
+                        )
+
+                        Spacer(modifier = Modifier.height(30.dp))
+
+                        // FORMULARIO
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(
+                                    elevation = 8.dp,
+                                    shape = RoundedCornerShape(16.dp),
+                                    spotColor = CheckoutColors.CyanAccent.copy(alpha = 0.1f)
+                                ),
+                            shape = RoundedCornerShape(16.dp),
+                            color = CheckoutColors.MediumSurface
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .border(
+                                        width = 1.dp,
+                                        color = CheckoutColors.Divider,
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                    .padding(16.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = cardNumber,
+                                    onValueChange = {
+                                        if (it.length <= 16 && it.all { char -> char.isDigit() }) {
+                                            cardNumber = it
+                                        }
+                                    },
+                                    label = { Text("Número de Tarjeta", color = CheckoutColors.TextSecondary) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    visualTransformation = CreditCardVisualTransformation(),
+                                    singleLine = true,
+                                    trailingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = CheckoutColors.CyanAccent) },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = CheckoutColors.CyanAccent,
+                                        unfocusedBorderColor = CheckoutColors.Divider,
+                                        focusedTextColor = CheckoutColors.TextPrimary,
+                                        unfocusedTextColor = CheckoutColors.TextPrimary,
+                                        cursorColor = CheckoutColors.CyanAccent
+                                    )
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                OutlinedTextField(
+                                    value = cardHolder,
+                                    onValueChange = { cardHolder = it.uppercase() },
+                                    label = { Text("Titular de la tarjeta", color = CheckoutColors.TextSecondary) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = CheckoutColors.CyanAccent,
+                                        unfocusedBorderColor = CheckoutColors.Divider,
+                                        focusedTextColor = CheckoutColors.TextPrimary,
+                                        unfocusedTextColor = CheckoutColors.TextPrimary,
+                                        cursorColor = CheckoutColors.CyanAccent
+                                    )
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = cardExpiry,
+                                        onValueChange = {
+                                            if (it.length <= 4 && it.all { char -> char.isDigit() }) {
+                                                cardExpiry = it
+                                            }
+                                        },
+                                        label = { Text("MM/YY", color = CheckoutColors.TextSecondary) },
+                                        modifier = Modifier.weight(1f),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        visualTransformation = ExpiryDateVisualTransformation(),
+                                        singleLine = true,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = CheckoutColors.CyanAccent,
+                                            unfocusedBorderColor = CheckoutColors.Divider,
+                                            focusedTextColor = CheckoutColors.TextPrimary,
+                                            unfocusedTextColor = CheckoutColors.TextPrimary,
+                                            cursorColor = CheckoutColors.CyanAccent
+                                        )
+                                    )
+
+                                    OutlinedTextField(
+                                        value = cardCvv,
+                                        onValueChange = { if (it.length <= 3 && it.all { char -> char.isDigit() }) cardCvv = it },
+                                        label = { Text("CVV", color = CheckoutColors.TextSecondary) },
+                                        modifier = Modifier.weight(1f),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                        visualTransformation = PasswordVisualTransformation(),
+                                        singleLine = true,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = CheckoutColors.CyanAccent,
+                                            unfocusedBorderColor = CheckoutColors.Divider,
+                                            focusedTextColor = CheckoutColors.TextPrimary,
+                                            unfocusedTextColor = CheckoutColors.TextPrimary,
+                                            cursorColor = CheckoutColors.CyanAccent
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(30.dp))
+
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(55.dp)
+                                .shadow(
+                                    elevation = 12.dp,
+                                    shape = RoundedCornerShape(20.dp),
+                                    spotColor = CheckoutColors.CyanAccent.copy(alpha = 0.4f)
+                                ),
+                            shape = RoundedCornerShape(20.dp),
+                            color = CheckoutColors.CyanAccent
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable(
+                                        indication = null,
+                                        interactionSource = remember { MutableInteractionSource() }
+                                    ) {
+                                        if (cardNumber.length == 16 && cardExpiry.length == 4 && cardCvv.length == 3) {
+                                            currentStep = CheckoutStep.PROCESSING
+                                        } else {
+                                            AppUtil.showToast(context, "Por favor completa los datos correctamente")
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Pagar $ " + "%.2f".format(total.value),
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(30.dp))
+                    }
+                }
+            }
+
             CheckoutStep.PROCESSING -> {
-                ProcessingView {
-                    // Cuando termina la animación (4 segundos), guardamos en la BD
+                PremiumProcessingView {
                     saveOrderToFirebase()
                 }
             }
 
-            // PASO 4: ÉXITO
             CheckoutStep.SUCCESS -> {
-                SuccessView()
+                PremiumSuccessView()
             }
         }
     }
 }
 
-// --- COMPONENTE: TARJETA VISUAL DINÁMICA ---
 @Composable
-fun DynamicCreditCard(number: String, holderName: String, expiry: String) {
+fun PremiumCreditCard(number: String, holderName: String, expiry: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(220.dp)
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(20.dp),
+                spotColor = CheckoutColors.CyanAccent.copy(alpha = 0.3f)
+            )
             .clip(RoundedCornerShape(20.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364))
+                    colors = listOf(
+                        CheckoutColors.MediumSurface,
+                        CheckoutColors.DarkSurface
+                    )
                 )
+            )
+            .border(
+                width = 1.dp,
+                color = CheckoutColors.CyanAccent.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(20.dp)
             )
             .padding(24.dp)
     ) {
-        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                // Chip
-                Box(modifier = Modifier.size(50.dp, 35.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xFFD4AF37).copy(alpha = 0.8f)))
-                Text("VISA", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp, 35.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(CheckoutColors.CyanAccent.copy(alpha = 0.3f))
+                )
+                Text(
+                    "VISA",
+                    color = CheckoutColors.CyanAccent,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
             }
 
-            // Número formateado para visualización
             val formattedNumber = if (number.isEmpty()) "•••• •••• •••• ••••" else {
                 number.chunked(4).joinToString(" ")
             }
 
             Text(
                 text = formattedNumber,
-                color = Color.White,
+                color = CheckoutColors.TextPrimary,
                 fontSize = 22.sp,
                 letterSpacing = 3.sp,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 fontWeight = FontWeight.Medium
             )
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Column {
-                    Text("TITULAR", color = Color.Gray, fontSize = 10.sp)
+                    Text("TITULAR", color = CheckoutColors.TextSecondary, fontSize = 10.sp)
                     Text(
                         text = if (holderName.isEmpty()) "NOMBRE APELLIDO" else holderName,
-                        color = Color.White,
+                        color = CheckoutColors.TextPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 }
                 Column {
-                    Text("EXPIRA", color = Color.Gray, fontSize = 10.sp)
-                    // Formateo visual de fecha
+                    Text("EXPIRA", color = CheckoutColors.TextSecondary, fontSize = 10.sp)
                     val formattedDate = if (expiry.length >= 2) expiry.substring(0, 2) + "/" + expiry.substring(2) else expiry
                     Text(
                         text = if (formattedDate.isEmpty()) "MM/AA" else formattedDate,
-                        color = Color.White,
+                        color = CheckoutColors.TextPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -462,8 +616,100 @@ fun DynamicCreditCard(number: String, holderName: String, expiry: String) {
     }
 }
 
-// --- CLASES DE AYUDA PARA FORMATEAR TEXTO (NO TOCAR, SOLO COPIAR) ---
-// Esto hace que aparezcan espacios cada 4 números sin romper el input
+@Composable
+fun PremiumRowItem(title: String, value: Float) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            color = CheckoutColors.TextSecondary
+        )
+        Text(
+            text = "$ " + "%.2f".format(value),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = CheckoutColors.TextPrimary
+        )
+    }
+}
+
+@Composable
+fun PremiumProcessingView(onDone: () -> Unit) {
+    LaunchedEffect(Unit) {
+        delay(4000)
+        onDone()
+    }
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.box_packing))
+    val progress by animateLottieCompositionAsState(composition, iterations = LottieConstants.IterateForever)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CheckoutColors.DarkBg),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            "Procesando Pago...",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = CheckoutColors.TextPrimary
+        )
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            modifier = Modifier.size(300.dp)
+        )
+    }
+}
+
+@Composable
+fun PremiumSuccessView() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(CheckoutColors.DarkBg),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(
+            modifier = Modifier
+                .size(100.dp)
+                .shadow(
+                    elevation = 20.dp,
+                    shape = RoundedCornerShape(50.dp),
+                    spotColor = CheckoutColors.CyanAccent.copy(alpha = 0.5f)
+                ),
+            shape = RoundedCornerShape(50.dp),
+            color = CheckoutColors.MediumSurface
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("✓", fontSize = 50.sp, color = CheckoutColors.CyanAccent)
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            "¡Pago Exitoso!",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = CheckoutColors.TextPrimary
+        )
+        Text(
+            "Tu orden ha sido confirmada",
+            color = CheckoutColors.TextSecondary
+        )
+    }
+}
+
+// CLASES DE AYUDA
 class CreditCardVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val trimmed = if (text.text.length >= 16) text.text.substring(0..15) else text.text
@@ -492,7 +738,6 @@ class CreditCardVisualTransformation : VisualTransformation {
     }
 }
 
-// Esto pone la barra / automáticamente
 class ExpiryDateVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         val trimmed = if (text.text.length >= 4) text.text.substring(0..3) else text.text
@@ -514,57 +759,5 @@ class ExpiryDateVisualTransformation : VisualTransformation {
             }
         }
         return TransformedText(AnnotatedString(out), offsetTranslator)
-    }
-}
-
-// --- VISTAS AUXILIARES ---
-@Composable
-fun RowItem(title: String, value: Float) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = title, fontSize = 16.sp, color = Color.Gray)
-        // CORRECCIÓN AQUÍ: Usamos formato para asegurar 2 decimales y el signo $
-        Text(
-            text = "$ " + "%.2f".format(value),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
-}
-
-@Composable
-fun ProcessingView(onDone: () -> Unit) {
-    LaunchedEffect(Unit) {
-        delay(4000)
-        onDone()
-    }
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.box_packing))
-    val progress by animateLottieCompositionAsState(composition, iterations = LottieConstants.IterateForever)
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Procesando Pago...", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        LottieAnimation(composition = composition, progress = { progress }, modifier = Modifier.size(300.dp))
-    }
-}
-
-@Composable
-fun SuccessView() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(modifier = Modifier.size(100.dp).background(Color(0xFFE8F5E9), RoundedCornerShape(50)).padding(20.dp), contentAlignment = Alignment.Center) {
-            Text("✓", fontSize = 50.sp, color = Color(0xFF4CAF50))
-        }
-        Spacer(modifier = Modifier.height(20.dp))
-        Text("¡Pago Exitoso!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("Tu orden ha sido confirmada", color = Color.Gray)
     }
 }

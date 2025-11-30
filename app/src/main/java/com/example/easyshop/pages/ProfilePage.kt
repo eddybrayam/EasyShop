@@ -3,6 +3,7 @@ package com.example.easyshop.pages
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,22 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.firestore
 import androidx.compose.ui.platform.LocalContext
 
+// PALETA PREMIUM
+private object ProfileColors {
+    val Black = Color(0xFF000000)
+    val DarkBg = Color(0xFF0A0A0A)
+    val DarkSurface = Color(0xFF111111)
+    val MediumSurface = Color(0xFF1A1A1A)
+    val LightSurface = Color(0xFF2A2A2A)
+    val TextPrimary = Color(0xFFFFFFFF)
+    val TextSecondary = Color(0xFFB5B5B5)
+    val Divider = Color(0xFF262626)
+
+    val CyanAccent = Color(0xFF00E8FF)
+    val CyanLight = Color(0xFF00E8FF).copy(alpha = 0.15f)
+    val CyanMuted = Color(0xFF00E8FF).copy(alpha = 0.3f)
+}
+
 @Composable
 fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = null) {
     val context = LocalContext.current
@@ -36,15 +53,11 @@ fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = n
     val auth = FirebaseAuth.getInstance()
     val db = Firebase.firestore
 
-    // --- ESTADOS PARA LOS DIÁLOGOS DE EDICIÓN ---
     var showNameDialog by remember { mutableStateOf(false) }
     var showAddressDialog by remember { mutableStateOf(false) }
     var showPassDialog by remember { mutableStateOf(false) }
-
-    // Variables temporales para lo que el usuario escribe
     var tempInput by remember { mutableStateOf("") }
 
-    // Cargar datos de Firebase
     LaunchedEffect(Unit) {
         val uid = auth.currentUser?.uid
         if (uid != null) {
@@ -55,12 +68,10 @@ fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = n
         }
     }
 
-    // --- FUNCIÓN PARA ACTUALIZAR FIRESTORE (NOMBRE O DIRECCIÓN) ---
     fun updateUserData(field: String, value: String) {
         val uid = auth.currentUser?.uid ?: return
         db.collection("users").document(uid).update(field, value)
             .addOnSuccessListener {
-                // Actualizamos la vista localmente
                 if (field == "name") userModel.value = userModel.value.copy(name = value)
                 if (field == "address") userModel.value = userModel.value.copy(address = value)
                 AppUtil.showToast(context, "Datos actualizados correctamente")
@@ -70,14 +81,12 @@ fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = n
             }
     }
 
-    // --- FUNCIÓN PARA CAMBIAR CONTRASEÑA ---
     fun updatePassword(newPass: String) {
         auth.currentUser?.updatePassword(newPass)
             ?.addOnSuccessListener {
                 AppUtil.showToast(context, "Contraseña cambiada exitosamente")
             }
             ?.addOnFailureListener {
-                // Firebase exige loguearse recientemente para cambiar pass
                 AppUtil.showToast(context, "Error: Cierra sesión y vuelve a entrar para cambiar la contraseña")
             }
     }
@@ -86,73 +95,155 @@ fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = n
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F5))
+                .background(ProfileColors.DarkBg)
         ) {
-            // --- CABECERA AZUL ---
+            // HEADER PREMIUM
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(240.dp)
                     .background(
-                        color = Color(0xFF3344CC),
-                        shape = RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                ProfileColors.MediumSurface,
+                                ProfileColors.DarkSurface
+                            )
+                        )
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = ProfileColors.Divider
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // Foto
-                    Box(
+                    // Avatar con glow
+                    Surface(
                         modifier = Modifier
                             .size(90.dp)
-                            .clip(CircleShape)
-                            .background(Color.White),
-                        contentAlignment = Alignment.Center
+                            .shadow(
+                                elevation = 16.dp,
+                                shape = CircleShape,
+                                spotColor = ProfileColors.CyanAccent.copy(alpha = 0.4f)
+                            ),
+                        shape = CircleShape,
+                        color = ProfileColors.LightSurface
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(50.dp), tint = Color.Gray)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            ProfileColors.LightSurface,
+                                            ProfileColors.MediumSurface
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(50.dp),
+                                tint = ProfileColors.CyanAccent
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // NOMBRE EDITABLE
+                    // Nombre editable
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = userModel.value.name.ifEmpty { "Usuario" },
-                            color = Color.White,
+                            color = ProfileColors.TextPrimary,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        // Botón de Lápiz para el nombre
                         IconButton(onClick = {
                             tempInput = userModel.value.name
                             showNameDialog = true
                         }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Editar Nombre", tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Editar Nombre",
+                                tint = ProfileColors.CyanAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
 
                     Text(
                         text = auth.currentUser?.email ?: "correo@ejemplo.com",
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = ProfileColors.TextSecondary,
                         fontSize = 14.sp
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // --- LISTA DE OPCIONES ---
+            // OPCIONES DE CUENTA
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text("Mi Cuenta", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(bottom = 10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .width(5.dp)
+                            .height(22.dp)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        ProfileColors.CyanAccent,
+                                        ProfileColors.CyanAccent.copy(alpha = 0.5f)
+                                    )
+                                )
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "Mi Cuenta",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = ProfileColors.TextPrimary
+                    )
+                }
 
-                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
-                    Column {
-                        // MIS PEDIDOS
-                        ProfileOptionItem(Icons.Default.List, "Mis Pedidos") { navController?.navigate("my_orders") }
+                Spacer(modifier = Modifier.height(14.dp))
 
-                        HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            spotColor = ProfileColors.CyanAccent.copy(alpha = 0.1f)
+                        ),
+                    shape = RoundedCornerShape(16.dp),
+                    color = ProfileColors.MediumSurface
+                ) {
+                    Column(
+                        modifier = Modifier.border(
+                            width = 1.dp,
+                            color = ProfileColors.Divider,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    ) {
+                        PremiumProfileOption(
+                            Icons.Default.List,
+                            "Mis Pedidos",
+                            onClick = { navController?.navigate("my_orders") }
+                        )
 
-                        // DIRECCIÓN (EDITABLE)
-                        ProfileOptionItem(
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(ProfileColors.Divider)
+                                .padding(horizontal = 16.dp)
+                        )
+
+                        PremiumProfileOption(
                             icon = Icons.Default.LocationOn,
                             title = "Dirección de Envío",
                             subtitle = userModel.value.address.ifEmpty { "Toca para agregar dirección" },
@@ -162,10 +253,15 @@ fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = n
                             }
                         )
 
-                        HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(ProfileColors.Divider)
+                                .padding(horizontal = 16.dp)
+                        )
 
-                        // CAMBIAR CONTRASEÑA
-                        ProfileOptionItem(
+                        PremiumProfileOption(
                             icon = Icons.Default.Lock,
                             title = "Cambiar Contraseña",
                             subtitle = "Actualizar seguridad",
@@ -179,75 +275,53 @@ fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = n
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // --- BOTÓN CERRAR SESIÓN ESTILO 3D ---
-                Box(
+                // BOTÓN CERRAR SESIÓN
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(55.dp)
-                        // 1. Sombra rojiza
                         .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(50.dp),
-                            spotColor = Color(0xFFD32F2F), // Sombra roja oscura
-                            ambientColor = Color(0xFFD32F2F)
-                        )
-                        .clip(RoundedCornerShape(50.dp))
-                        // 2. Degradado Vertical (Rojos intensos para Logout)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFFEF5350), // Rojo claro arriba (Luz)
-                                    Color(0xFFB71C1C)  // Rojo oscuro abajo (Sombra)
-                                )
-                            )
-                        )
-                        // 3. Borde de brillo superior
-                        .border(
-                            width = 1.dp,
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.5f),
-                                    Color.Transparent
-                                )
-                            ),
-                            shape = RoundedCornerShape(50.dp)
-                        )
-                        .clickable {
-                            auth.signOut()
-                            navController?.navigate("login") { popUpTo(0) }
-                        },
-                    contentAlignment = Alignment.Center
+                            elevation = 12.dp,
+                            shape = RoundedCornerShape(20.dp),
+                            spotColor = Color(0xFFFF006E).copy(alpha = 0.3f)
+                        ),
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xFFFF006E)
                 ) {
-                    // Contenido centrado: Icono + Texto
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = null,
-                            tint = Color.White, // Icono blanco para contraste
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Cerrar Sesión",
-                            color = Color.White, // Texto blanco
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp,
-                            // Sombra suave en el texto
-                            style = androidx.compose.ui.text.TextStyle(
-                                shadow = androidx.compose.ui.graphics.Shadow(
-                                    color = Color.Black.copy(alpha = 0.3f),
-                                    blurRadius = 4f
-                                )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) {
+                                auth.signOut()
+                                navController?.navigate("login") { popUpTo(0) }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ExitToApp,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
                             )
-                        )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Cerrar Sesión",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // --- DIÁLOGO: EDITAR NOMBRE ---
         if (showNameDialog) {
-            EditDialog(
+            PremiumEditDialog(
                 title = "Editar Nombre",
                 initialValue = tempInput,
                 onDismiss = { showNameDialog = false },
@@ -258,9 +332,8 @@ fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = n
             )
         }
 
-        // --- DIÁLOGO: EDITAR DIRECCIÓN ---
         if (showAddressDialog) {
-            EditDialog(
+            PremiumEditDialog(
                 title = "Actualizar Dirección",
                 initialValue = tempInput,
                 onDismiss = { showAddressDialog = false },
@@ -271,15 +344,14 @@ fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = n
             )
         }
 
-        // --- DIÁLOGO: CAMBIAR CONTRASEÑA ---
         if (showPassDialog) {
-            EditDialog(
+            PremiumEditDialog(
                 title = "Nueva Contraseña",
                 initialValue = "",
                 isPassword = true,
                 onDismiss = { showPassDialog = false },
                 onSave = { newPass ->
-                    if(newPass.length >= 6) {
+                    if (newPass.length >= 6) {
                         updatePassword(newPass)
                         showPassDialog = false
                     } else {
@@ -291,31 +363,73 @@ fun ProfilePage(modifier: Modifier = Modifier, navController: NavController? = n
     }
 }
 
-// --- COMPONENTES REUTILIZABLES ---
-
 @Composable
-fun ProfileOptionItem(icon: ImageVector, title: String, subtitle: String? = null, onClick: () -> Unit) {
+fun PremiumProfileOption(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFEEF1FF)), contentAlignment = Alignment.Center) {
-            Icon(imageVector = icon, contentDescription = null, tint = Color(0xFF3344CC))
+        Surface(
+            modifier = Modifier
+                .size(40.dp)
+                .shadow(
+                    elevation = 4.dp,
+                    shape = RoundedCornerShape(10.dp),
+                    spotColor = ProfileColors.CyanAccent.copy(alpha = 0.2f)
+                ),
+            shape = RoundedCornerShape(10.dp),
+            color = ProfileColors.LightSurface
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = ProfileColors.CyanAccent,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
+
         Spacer(modifier = Modifier.width(16.dp))
+
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            if (subtitle != null) Text(text = subtitle, fontSize = 12.sp, color = Color.Gray)
+            Text(
+                text = title,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = ProfileColors.TextPrimary
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = ProfileColors.TextSecondary
+                )
+            }
         }
-        Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = Color.Gray)
+
+        Icon(
+            Icons.Default.KeyboardArrowRight,
+            contentDescription = null,
+            tint = ProfileColors.CyanAccent,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
 @Composable
-fun EditDialog(
+fun PremiumEditDialog(
     title: String,
     initialValue: String,
     isPassword: Boolean = false,
@@ -326,7 +440,13 @@ fun EditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = title, fontWeight = FontWeight.Bold) },
+        title = {
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                color = ProfileColors.TextPrimary
+            )
+        },
         text = {
             OutlinedTextField(
                 value = text,
@@ -334,19 +454,36 @@ fun EditDialog(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = if (isPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-                label = { Text(if(isPassword) "Nueva Contraseña" else "Escribe aquí") }
+                label = {
+                    Text(
+                        if (isPassword) "Nueva Contraseña" else "Escribe aquí",
+                        color = ProfileColors.TextSecondary
+                    )
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ProfileColors.CyanAccent,
+                    unfocusedBorderColor = ProfileColors.Divider,
+                    focusedTextColor = ProfileColors.TextPrimary,
+                    unfocusedTextColor = ProfileColors.TextPrimary,
+                    cursorColor = ProfileColors.CyanAccent
+                )
             )
         },
         confirmButton = {
-            Button(onClick = { onSave(text) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3344CC))) {
-                Text("Guardar")
+            Button(
+                onClick = { onSave(text) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ProfileColors.CyanAccent
+                )
+            ) {
+                Text("Guardar", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = Color.Gray)
+                Text("Cancelar", color = ProfileColors.TextSecondary)
             }
         },
-        containerColor = Color.White
+        containerColor = ProfileColors.MediumSurface
     )
 }

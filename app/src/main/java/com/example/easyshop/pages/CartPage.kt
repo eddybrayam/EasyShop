@@ -1,42 +1,54 @@
 package com.example.easyshop.pages
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.request.Disposable
-import com.example.easyshop.AppUtil
 import com.example.easyshop.GlobalNavigation
 import com.example.easyshop.components.CartItemView
 import com.example.easyshop.model.UserModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.firestore
+
+// PALETA PREMIUM
+private object CartColors {
+    val Black = Color(0xFF000000)
+    val DarkBg = Color(0xFF0A0A0A)
+    val DarkSurface = Color(0xFF111111)
+    val MediumSurface = Color(0xFF1A1A1A)
+    val LightSurface = Color(0xFF2A2A2A)
+    val TextPrimary = Color(0xFFFFFFFF)
+    val TextSecondary = Color(0xFFB5B5B5)
+    val Divider = Color(0xFF262626)
+
+    val CyanAccent = Color(0xFF00E8FF)
+    val CyanLight = Color(0xFF00E8FF).copy(alpha = 0.15f)
+    val CyanMuted = Color(0xFF00E8FF).copy(alpha = 0.3f)
+}
 
 @Composable
 fun CartPage(modifier: Modifier = Modifier) {
@@ -45,10 +57,10 @@ fun CartPage(modifier: Modifier = Modifier) {
     }
 
     DisposableEffect(key1 = Unit) {
-        var listener = Firebase.firestore.collection("users")
+        val listener = Firebase.firestore.collection("users")
             .document(FirebaseAuth.getInstance().currentUser?.uid!!)
-            .addSnapshotListener{it, _->
-                if (it!=null) {
+            .addSnapshotListener { it, _ ->
+                if (it != null) {
                     val result = it.toObject(UserModel::class.java)
                     if (result != null) {
                         userModel.value = result
@@ -58,61 +70,124 @@ fun CartPage(modifier: Modifier = Modifier) {
         onDispose {
             listener.remove()
         }
-
     }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .background(CartColors.DarkBg)
     ) {
-        Text(
-            text = "Your cart", style = TextStyle(
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
-            )
-        )
-        LazyColumn(
-            modifier = Modifier.weight(1f)
+        // HEADER
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            CartColors.MediumSurface,
+                            CartColors.DarkBg.copy(alpha = 0.5f)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    color = CartColors.Divider
+                )
+                .padding(20.dp)
         ) {
-            items(userModel.value.cartItems.toList(),key = { it.first}) { (productId, qty) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .width(5.dp)
+                            .height(28.dp)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        CartColors.CyanAccent,
+                                        CartColors.CyanAccent.copy(alpha = 0.5f)
+                                    )
+                                )
+                            )
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "Your cart",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CartColors.TextPrimary
+                    )
+                }
+
+                AnimatedContent(
+                    targetState = userModel.value.cartItems.size,
+                    label = "ItemCountAnimation"
+                ) { count ->
+                    if (count > 0) {
+                        Surface(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .shadow(
+                                    elevation = 8.dp,
+                                    shape = CircleShape,
+                                    spotColor = CartColors.CyanAccent.copy(alpha = 0.3f)
+                                ),
+                            shape = CircleShape,
+                            color = CartColors.CyanAccent
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Text(
+                                    text = count.toString(),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // CART ITEMS LIST
+        LazyColumn(
+            modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(userModel.value.cartItems.toList(), key = { it.first }) { (productId, qty) ->
                 CartItemView(productId = productId, qty = qty)
             }
         }
 
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // CHECKOUT BUTTON - ESTILO PREMIUM CYAN
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(55.dp) // Altura ajustada para el efecto
-                // 1. Sombra brillante abajo
+                .height(55.dp)
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 16.dp)
                 .shadow(
-                    elevation = 8.dp,
-                    shape = RoundedCornerShape(50.dp),
-                    spotColor = Color(0xFFFF3366),
-                    ambientColor = Color(0xFFFF3366)
+                    elevation = 12.dp,
+                    shape = RoundedCornerShape(20.dp),
+                    spotColor = CartColors.CyanAccent.copy(alpha = 0.4f)
                 )
-                .clip(RoundedCornerShape(50.dp))
-                // 2. Degradado Vertical para dar volumen
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFFFF758C), // Rosa claro arriba (Luz)
-                            Color(0xFFFF0040)  // Rojo intenso abajo (Sombra)
-                        )
-                    )
-                )
-                // 3. Borde de luz superior (El "brillo" del plástico)
-                .border(
-                    width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.5f), // Blanco transparente
-                            Color.Transparent               // Desaparece abajo
-                        )
-                    ),
-                    shape = RoundedCornerShape(50.dp)
-                )
-                .clickable {
+                .clip(RoundedCornerShape(20.dp))
+                .background(CartColors.CyanAccent)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
                     GlobalNavigation.navController.navigate("checkout")
                 },
             contentAlignment = Alignment.Center
@@ -121,17 +196,14 @@ fun CartPage(modifier: Modifier = Modifier) {
                 text = "Checkout",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
-                // Sombra suave al texto para que se lea mejor
-                style = androidx.compose.ui.text.TextStyle(
+                color = Color.Black,
+                style = TextStyle(
                     shadow = androidx.compose.ui.graphics.Shadow(
-                        color = Color.Black.copy(alpha = 0.2f),
-                        blurRadius = 4f
+                        color = Color.Black.copy(alpha = 0.1f),
+                        blurRadius = 2f
                     )
                 )
             )
         }
-
     }
-
 }

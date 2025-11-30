@@ -54,9 +54,4 @@ fun CategoryProductsPage(modifier: Modifier = Modifier,categoryId : String) {
             }
         }
     }
-
-
-
-
-
 }
